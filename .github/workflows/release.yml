@@ -8,6 +8,8 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -34,3 +36,20 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{"repository":{"url":"git@github.com:zzktz/antmin_hyperf.git"}}' \
             "https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_TOKEN }}"
+
+      - name: Delete old tags and releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mapfile -t tags < <(git ls-remote --tags --refs origin 'v*' | awk '{print $2}' | sed 's#refs/tags/##' | sort -V)
+
+          if [ "${#tags[@]}" -le 3 ]; then
+            exit 0
+          fi
+
+          delete_count=$((${#tags[@]} - 3))
+          for ((i=0; i<delete_count; i++)); do
+            tag="${tags[$i]}"
+            gh release delete "$tag" --yes || true
+            git push origin ":refs/tags/$tag"
+          done
