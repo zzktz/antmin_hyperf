@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Antmin\Support;
 
 use Hyperf\Context\RequestContext;
-use Hyperf\Context\ResponseContext;
 use Hyperf\Contract\ContainerInterface;
 use Hyperf\HttpServer\Contract\RequestInterface;
 use Hyperf\HttpServer\Contract\ResponseInterface;
@@ -30,11 +29,6 @@ class HyperfContext
 
     public function response(): ResponseInterface
     {
-        $response = ResponseContext::getOrNull();
-        if ($response !== null) {
-            return $response;
-        }
-
         return $this->container->get(ResponseInterface::class);
     }
 

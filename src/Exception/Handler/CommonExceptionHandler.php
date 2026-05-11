@@ -7,7 +7,7 @@ namespace Antmin\Exception\Handler;
 use Antmin\Common\Base;
 use Antmin\Exceptions\CommonException;
 use Hyperf\ExceptionHandler\ExceptionHandler;
-use Swow\Psr7\Message\ResponsePlusInterface;
+use Psr\Http\Message\ResponseInterface;
 use Throwable;
 
 class CommonExceptionHandler extends ExceptionHandler
@@ -16,7 +16,7 @@ class CommonExceptionHandler extends ExceptionHandler
     {
     }
 
-    public function handle(Throwable $throwable, ResponsePlusInterface $response)
+    public function handle(Throwable $throwable, ResponseInterface $response)
     {
         if (! $throwable instanceof CommonException) {
             return $response;
