@@ -15,7 +15,7 @@ use Lcobucci\JWT\Validation\Constraint\HasClaimWithValue;
 use Lcobucci\JWT\Validation\Constraint\IssuedBy;
 use Lcobucci\JWT\Validation\Constraint\LooseValidAt;
 use Lcobucci\JWT\Validation\Constraint\PermittedFor;
-use Lcobucci\JWT\Validation\Constraint\RelatedTo;
+use Lcobucci\JWT\Validation\Constraint\SignedWith;
 
 class JwtTokenService implements TokenServiceInterface
 {
@@ -61,6 +61,7 @@ class JwtTokenService implements TokenServiceInterface
             $roleClaim = (string) $this->config->get('antmin.token.role_claim', 'antadmin');
 
             $constraints = [
+                new SignedWith($this->configuration->signer(), $this->configuration->verificationKey()),
                 new IssuedBy($issuer),
                 new PermittedFor($audience),
                 new LooseValidAt(new \DateTimeZone(date_default_timezone_get() ?: 'UTC')),
@@ -83,10 +84,16 @@ class JwtTokenService implements TokenServiceInterface
         }
     }
 
+    public function revokeToken(int $accountId, string $token): void
+    {
+        $redis = $this->redisFactory->get('default');
+        $redis->zRem($this->getTokenKey($accountId), $token);
+    }
+
     private function saveTokens(string $token, int $accountId, int $expireSeconds): void
     {
         $redis = $this->redisFactory->get('default');
-        $key = (string) $this->config->get('antmin.token.redis_prefix', 'account_tokens:') . $accountId;
+        $key = $this->getTokenKey($accountId);
         $maxTokens = (int) $this->config->get('antmin.token.max_tokens_per_user', 3);
         $milliseconds = (int) floor(microtime(true) * 1000);
 
@@ -100,7 +107,11 @@ class JwtTokenService implements TokenServiceInterface
     private function isTokenExists(string $token, int $accountId): bool
     {
         $redis = $this->redisFactory->get('default');
-        $key = (string) $this->config->get('antmin.token.redis_prefix', 'account_tokens:') . $accountId;
-        return $redis->zScore($key, $token) !== false;
+        return $redis->zScore($this->getTokenKey($accountId), $token) !== false;
+    }
+
+    private function getTokenKey(int $accountId): string
+    {
+        return (string) $this->config->get('antmin.token.redis_prefix', 'account_tokens:') . $accountId;
     }
 }

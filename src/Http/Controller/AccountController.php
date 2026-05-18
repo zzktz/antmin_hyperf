@@ -170,8 +170,9 @@ class AccountController extends AbstractController
     public function reInitPassword(): ResponseInterface
     {
         $input = $this->input();
+        $accountId = (int) ($this->request->getAttribute('accountId') ?? 0);
         $id = (int) $this->base->getValue($input, 'id', '', 'required|integer');
-        $this->accountService->reInitPassword($id);
+        $this->accountService->reInitPassword($id, $accountId);
         return $this->success('密码重置成功');
     }
 }

@@ -9,4 +9,6 @@ interface TokenServiceInterface
     public function issueToken(int $accountId): string;
 
     public function parseToken(string $token): int;
+
+    public function revokeToken(int $accountId, string $token): void;
 }

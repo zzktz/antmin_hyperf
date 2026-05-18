@@ -67,6 +67,13 @@ class EnterController extends AbstractController
 
     protected function logout(): ResponseInterface
     {
+        $accountId = (int) ($this->request->getAttribute('accountId') ?? 0);
+        $token = $this->request->getHeaderLine('Access-Token');
+        if ($token === '') {
+            throw new CommonException('Access-Token 不存在', [], -1, 401);
+        }
+
+        $this->accountService->logout($accountId, $token);
         return $this->success('成功');
     }
 

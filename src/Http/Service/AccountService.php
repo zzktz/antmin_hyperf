@@ -32,7 +32,11 @@ class AccountService
     public function getAccountIdByToken(string $token): int
     {
         try {
-            return $this->tokenRepo->getIdByToken($token);
+            $accountId = $this->tokenRepo->getIdByToken($token);
+            $this->ensureAccountIsActive($accountId);
+            return $accountId;
+        } catch (CommonException $exception) {
+            throw new CommonException($exception->getMessage(), [], -1, 401);
         } catch (\Throwable $throwable) {
             throw new CommonException($throwable->getMessage(), [], -1, 401);
         }
@@ -164,15 +168,36 @@ class AccountService
         $this->accountRepo->del($id);
     }
 
-    public function reInitPassword(int $accountId): bool
+    public function reInitPassword(int $id, int $accountId): bool
     {
-        return $this->accountRepo->updatePassword($this->passwordHasher->hash(self::DEF_PASSWORD), $accountId);
+        $this->checkPermissions($accountId);
+        if ($this->accountRepo->getInfo($id) === []) {
+            throw new CommonException('用户不存在');
+        }
+
+        return $this->accountRepo->updatePassword($this->passwordHasher->hash(self::DEF_PASSWORD), $id);
+    }
+
+    public function logout(int $accountId, string $token): void
+    {
+        $this->tokenRepo->revokeToken($accountId, $token);
     }
 
     private function checkPermissions(int $accountId): void
     {
         if (! $this->accountRepo->isSuperAdmin($accountId)) {
             throw new CommonException('非超级管理员无权操作');
+        }
+    }
+
+    private function ensureAccountIsActive(int $accountId): void
+    {
+        $account = $this->accountRepo->getInfo($accountId);
+        if ($account === []) {
+            throw new CommonException('用户不存在');
+        }
+        if ((int) ($account['status'] ?? 0) !== 1) {
+            throw new CommonException('账号已被禁用，请联系管理员');
         }
     }
 }

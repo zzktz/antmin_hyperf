@@ -38,6 +38,7 @@ class LoginService
                 throw new CommonException('账户或密码错误');
             }
 
+            $this->ensureAccountIsActive($info);
             $token = $this->tokenRepo->getTokenById((int) $info['id']);
             $this->safeService->flagSuccess();
             return $token;
@@ -92,6 +93,7 @@ class LoginService
             throw new CommonException('手机号不存在');
         }
 
+        $this->ensureAccountIsActive($info);
         return $this->tokenRepo->getTokenById((int) $info['id']);
     }
 
@@ -107,5 +109,12 @@ class LoginService
 
         $this->passwordService->checkPasswordStrength($password);
         return $this->accountRepo->updatePassword($this->passwordHasher->hash($password), (int) $info['id']);
+    }
+
+    private function ensureAccountIsActive(array $account): void
+    {
+        if ((int) ($account['status'] ?? 0) !== 1) {
+            throw new CommonException('账号已被禁用，请联系管理员');
+        }
     }
 }

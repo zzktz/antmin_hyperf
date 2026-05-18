@@ -221,11 +221,86 @@ class AccountControllerTest extends TestCase
         $controller->operate();
     }
 
-    private function createRequest(array $queryParams = [], ?array $parsedBody = null): ServerRequestInterface
+    public function testReInitPasswordPassesOperatorIdToService(): void
+    {
+        $response = $this->createMock(ResponseInterface::class);
+
+        $base = $this->createMock(Base::class);
+        $base->expects($this->once())
+            ->method('getValue')
+            ->with(['id' => 9], 'id', '', 'required|integer')
+            ->willReturn(9);
+        $base->expects($this->once())
+            ->method('sucJson')
+            ->with('密码重置成功', [], 0)
+            ->willReturn($response);
+
+        $accountService = $this->createMock(AccountService::class);
+        $accountService->expects($this->once())
+            ->method('reInitPassword')
+            ->with(9, 1)
+            ->willReturn(true);
+
+        $controller = new AccountController(
+            $accountService,
+            $this->createMock(LoginService::class),
+            $base,
+            $this->createRequest(['id' => 9], null, ['accountId' => 1]),
+            $this->createMock(ValidatorFactoryInterface::class),
+        );
+
+        $this->assertSame($response, $controller->reInitPassword());
+    }
+
+    public function testEnterLogoutRevokesCurrentToken(): void
+    {
+        $response = $this->createMock(ResponseInterface::class);
+
+        $base = $this->createMock(Base::class);
+        $base->expects($this->once())
+            ->method('sucJson')
+            ->with('成功', [], 0)
+            ->willReturn($response);
+
+        $accountService = $this->createMock(AccountService::class);
+        $accountService->expects($this->once())
+            ->method('logout')
+            ->with(1, 'token-123');
+
+        $controller = new EnterController(
+            $accountService,
+            $this->createMock(PermissionsService::class),
+            $this->createMock(AccountController::class),
+            $this->createMock(MenuController::class),
+            $this->createMock(RoleController::class),
+            $this->createMock(PermissionsController::class),
+            $base,
+            $this->createRequest(
+                ['action' => 'logout'],
+                null,
+                ['accountId' => 1],
+                ['Access-Token' => 'token-123']
+            ),
+            $this->createMock(ValidatorFactoryInterface::class),
+        );
+
+        $this->assertSame($response, $controller->operate());
+    }
+
+    private function createRequest(
+        array $queryParams = [],
+        ?array $parsedBody = null,
+        array $attributes = [],
+        array $headers = [],
+    ): ServerRequestInterface
     {
         $request = $this->createMock(ServerRequestInterface::class);
         $request->method('getQueryParams')->willReturn($queryParams);
         $request->method('getParsedBody')->willReturn($parsedBody);
+        $request->method('getAttribute')
+            ->willReturnCallback(static fn (string $name, mixed $default = null): mixed => $attributes[$name] ?? $default);
+        $request->method('getHeaderLine')
+            ->willReturnCallback(static fn (string $name): string => (string) ($headers[$name] ?? ''));
 
         return $request;
     }

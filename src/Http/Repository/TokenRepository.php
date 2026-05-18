@@ -21,4 +21,9 @@ class TokenRepository
     {
         return $this->tokenService->issueToken($accountId);
     }
+
+    public function revokeToken(int $accountId, string $token): void
+    {
+        $this->tokenService->revokeToken($accountId, $token);
+    }
 }
